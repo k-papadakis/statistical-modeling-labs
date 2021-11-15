@@ -23,7 +23,10 @@ plot(
   ylim = c(min(df$y) - 0.5, max(df$y) + 0.5)
 )
 
-abline(fitted, col='blue')
+# Ερμηνεία  1
+# β : αν αυξηθεί η Χ κατά μία μονάδα (δηλαδή για ένα επιπλέον χαλασμένο εξάρτημα)
+# αναμένεται η διάρκεια επισκευής της μηχανής να αυξηθεί κατά 15.5 περίπου λεπτά.
+# abline(fitted, col='blue')
 
 # Hypothesis testing and intervals
 b1_pval <- summ$coefficients['x', 'Pr(>|t|)']
@@ -52,6 +55,17 @@ lines(x0, cint.y[,2], col='darkviolet', lty=4)
 lines(x0, cint.y[,3], col='darkviolet', lty=4)
 
 dev.off()
+
+
+svg('./output/fourplot.svg')
+par(mfrow=c(2,2))
+plot(fitted)
+dev.off()
+# Homoscedasticity does appear to hold for the residuals,
+# since for all y the divergence from the 0-line looks roughly the same
+# In addition to that, the QQ-plot fit the theoritical normal line almost perfectly,
+# thus we can safely assume that y is indeed normally distributed.
+
 
 
 
