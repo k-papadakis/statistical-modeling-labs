@@ -1,5 +1,3 @@
-
-
 # Load the data
 df <- read.table('./data/cholesterol.txt', sep = "", header = TRUE)
 print(dim(df))
@@ -9,10 +7,29 @@ fitted = lm(y~x, df)
 summ <- summary(fitted)
 print(summ)
 
-svg('./output/plot.svg')
+# Hypothesis testing and intervals
+b1_pval <- summ$coefficients['x', 'Pr(>|t|)']
+sprintf('H0: b1 = 0 is not rejected if and only if the significance level is set to be lower than %.16f', b1_pval)
+# Explanation of b is that, if someones age increased by one year,
+# then his cholesterol levels are increated by b.
+
+confint.b1 <- confint(fitted, parm = 'x', level = 0.95)
+print('Confidence interval for b1')
+print(confint.b1)
+
+x0 <- 35
+confint.Ey <- predict.lm(fitted, data.frame(x=x0),
+                         interval='confidence', level=0.99)
+predint.y <- predict.lm(fitted, data.frame(x=x0),
+                        interval='prediction', level=0.99)
+print(confint.Ey)
+print(predint.y)
 
 
-# Plot
+# PLOT THE PREDICTIONS y~x
+
+svg('./output/part-b-scatter.svg')
+
 plot(
   df$x, df$y,
   pch = 16,
@@ -23,41 +40,24 @@ plot(
   ylim = c(min(df$y) - 0.5, max(df$y) + 0.5)
 )
 
-# Ερμηνεία  1
-# β : αν αυξηθεί η Χ κατά μία μονάδα (δηλαδή για ένα επιπλέον χαλασμένο εξάρτημα)
-# αναμένεται η διάρκεια επισκευής της μηχανής να αυξηθεί κατά 15.5 περίπου λεπτά.
-# abline(fitted, col='blue')
+abline(fitted, col='blue')
+x0s <- seq(from = min(df$x) - 2, to = max(df$x) + 2, length.out=30)
+confints.Ey <- predict.lm(fitted, data.frame(x=x0s),
+                          interval='confidence', level=0.99)
+predints.y <- predict.lm(fitted, data.frame(x=x0s),
+                         interval='prediction', level=0.99)
 
-# Hypothesis testing and intervals
-b1_pval <- summ$coefficients['x', 'Pr(>|t|)']
-sprintf('H0: b1 = 0 is not rejected if and only if the significance level is set to be lower than %.16f', b1_pval)
+lines(x0s, confints.Ey[,'lwr'], col='darkgreen', lty=2)
+lines(x0s, confints.Ey[,'upr'], col='darkgreen', lty=2)
 
-cint.b1 <- confint(fitted, parm = 'x', level = 0.95)
-print('Confidence interval for b1')
-print(cint.b1)
-
-x0 <- 35
-cint.Ey <- predict(fitted, data.frame(x=x0), interval='confidence', level=0.99)
-cint.y <- predict(fitted, data.frame(x=x0), interval='prediction', level=0.99)
-print(cint.Ey)
-print(cint.y)
-
-
-# Plot the bands
-x0 <- seq(from = min(df$x) - 2, to = max(df$x) + 2, length.out=30)
-cint.Ey <- predict(fitted, data.frame(x=x0), interval='confidence', level=0.99)
-cint.y <- predict(fitted, data.frame(x=x0), interval='prediction', level=0.99)
-
-lines(x0, cint.Ey[,2], col='darkgreen', lty=2)
-lines(x0, cint.Ey[,3], col='darkgreen', lty=2)
-
-lines(x0, cint.y[,2], col='darkviolet', lty=4)
-lines(x0, cint.y[,3], col='darkviolet', lty=4)
+lines(x0s, predints.y[,'lwr'], col='darkviolet', lty=4)
+lines(x0s, predints.y[,'upr'], col='darkviolet', lty=4)
 
 dev.off()
 
 
-svg('./output/fourplot.svg')
+# PLOT QQ ETC.
+svg('./output/part-b-fourplot.svg')
 par(mfrow=c(2,2))
 plot(fitted)
 dev.off()
