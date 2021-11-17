@@ -1,3 +1,5 @@
+#!/usr/bin/R
+
 # Load the data
 df <- read.table('./data/cholesterol.txt', sep = "", header = TRUE)
 print(dim(df))

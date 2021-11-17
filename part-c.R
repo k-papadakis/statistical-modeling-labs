@@ -1,3 +1,5 @@
+#!/usr/bin/R
+
 transform.interval <- function(interval) {
   ret <- 3 - exp(interval)
   ret[, c('lwr', 'upr')] <- ret[, c('upr', 'lwr')]
