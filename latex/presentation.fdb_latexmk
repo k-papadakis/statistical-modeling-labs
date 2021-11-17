@@ -1,11 +1,11 @@
 # Fdb version 3
-["pdflatex"] 1637185276 "/home/konstantinos/projects/statistical-modelling-series-1/latex/presentation.tex" "presentation.pdf" "presentation" 1637185276
+["pdflatex"] 1637185906 "/home/konstantinos/projects/statistical-modelling-series-1/latex/presentation.tex" "presentation.pdf" "presentation" 1637185956
   "../output//part-b-fourplot.pdf" 1637181461 14363 346b826705def9a82a5fdeccc7b29f21 ""
   "../output//part-b-scatter.pdf" 1637181461 6822 28993e71a896cd70bd8c008e407e855d ""
   "../output//part-c-scatter-original.pdf" 1637184398 4937 68d2ca178a53942dfeea89b47aadba5d ""
   "../output//part-c-scatter-transformed-detransformed.pdf" 1637184398 6370 7c314cde3ee9bc668ff3c5cdb04f7df6 ""
   "../output//part-c-scatter-transformed.pdf" 1637184398 4952 27bdd67101a5d166a7353c90091afc12 ""
-  "/home/konstantinos/projects/statistical-modelling-series-1/latex/presentation.tex" 1637185275 19341 67ee73cd2428fe12e1a345132e65fd9f ""
+  "/home/konstantinos/projects/statistical-modelling-series-1/latex/presentation.tex" 1637185956 19661 e9269722e38326ecb15d5e828e2c3c79 ""
   "/usr/local/texlive/2021/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc" 1136849721 2971 def0b6c1f0b107b3b936def894055589 ""
   "/usr/local/texlive/2021/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1136849721 2900 1537cc8184ad1792082cd229ecc269f4 ""
   "/usr/local/texlive/2021/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -111,9 +111,9 @@
   "/usr/local/texlive/2021/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1636578017 4363830 9cad3e28ee344ee180fb74739ffea761 ""
   "/usr/local/texlive/2021/texmf-var/web2c/pdftex/pdflatex.fmt" 1636578029 2805524 731dc60edc92c1221aaae32dc9dbb8bb ""
   "/usr/local/texlive/2021/texmf.cnf" 1636578014 455 5b996dcaa0eb4ef14a83b026bc0a008c ""
-  "presentation.aux" 1637185276 2877 ac9950bf48713a1210ac69b44595040d "pdflatex"
-  "presentation.tex" 1637185275 19341 67ee73cd2428fe12e1a345132e65fd9f ""
+  "presentation.aux" 1637185906 3024 f55c7a38fc98e17475a5e0b35f2362a4 "pdflatex"
+  "presentation.tex" 1637185956 19661 e9269722e38326ecb15d5e828e2c3c79 ""
   (generated)
-  "presentation.aux"
   "presentation.pdf"
   "presentation.log"
+  "presentation.aux"
