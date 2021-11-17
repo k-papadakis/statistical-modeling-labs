@@ -30,7 +30,7 @@ print(predint.y)
 
 # PLOT THE PREDICTIONS y~x
 
-svg('./output/part-b-scatter.svg')
+pdf('./output/part-b-scatter.pdf')
 
 plot(
   df$x, df$y,
@@ -59,7 +59,7 @@ dev.off()
 
 
 # PLOT QQ ETC.
-svg('./output/part-b-fourplot.svg')
+pdf('./output/part-b-fourplot.pdf')
 par(mfrow=c(2,2))
 plot(fitted)
 dev.off()

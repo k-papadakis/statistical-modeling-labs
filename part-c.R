@@ -16,7 +16,7 @@ df <- data.frame(x=c(2, 4, 6, 12, 18, 24),
 
 attach(df)
 
-svg('./output/part-c-qqplot-original.svg')
+pdf('./output/part-c-qqplot-original.pdf')
 # Plot the original QQ plot
 qqnorm(y, main='Normal Q-Q Plot for the original response variable')
 qqline(y)
@@ -25,7 +25,7 @@ dev.off()
 fitted_original <- lm(y~x, df)
 
 # Plot the original linear fit attempt
-svg('./output/part-c-scatter-original.svg')
+pdf('./output/part-c-scatter-original.pdf')
 plot(x, y, main='Linear model fitted on the original data')
 abline(fitted_original)
 dev.off()
@@ -44,7 +44,7 @@ df$z <- log(3 - df$y)
 attach(df)
 
 # Plot the transformed QQ plot
-svg('./output/part-c-qqplot-transformed.svg')
+pdf('./output/part-c-qqplot-transformed.pdf')
 qqnorm(df$z, main='Normal Q-Q Plot for the new response variable')
 qqline(df$z)
 dev.off()
@@ -53,7 +53,7 @@ dev.off()
 fitted <- lm(z~x, data=df)
 
 # Plot the transformed data
-svg('./output/part-c-scatter-transformed.svg')
+pdf('./output/part-c-scatter-transformed.pdf')
 plot(x, z, xlab='x', ylab='log(3 - y)',
      main='Linear model fitted on the transformed data')
 abline(fitted)
@@ -109,7 +109,7 @@ predints.z <- predict.lm(fitted, data.frame(x=x0s),
 predints.y <- transform.interval(predints.z)
   
 
-svg('./output/part-c-scatter-transformed-detransformed.svg')
+pdf('./output/part-c-scatter-transformed-detransformed.pdf')
 
 plot(x, y,
      pch = 16,
