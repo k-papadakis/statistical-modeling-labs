@@ -38,7 +38,7 @@ gg1 <- gg1 + geom_abline(aes(intercept = common_intercept,
 strA <- sprintf("A: y = %.4f + %.4f x", common_intercept, slopeA)
 strB <- sprintf("B: y = %.4f + %.4f x", common_intercept, slopeB)
 gg1 <- gg1 + scale_color_discrete(labels=c(strA, strB))
-gg1 <- gg1 + labs(title = "Best model for canary.txt")
+gg1 <- gg1 + labs(title = "Common intercept model for canary.txt (best)")
 gg1
 
 # Scatter for the two parallel lines
@@ -60,5 +60,8 @@ gg2 <- gg2 + scale_color_discrete(labels=c(strA, strB))
 gg2 <- gg2 + labs(title = "Parallel lines model for canary.txt")
 gg2
 
-# If we accept the parallel lines model, then this means that groupA always produces b0 more pulses
-# than groupA, and that's the only way the two groups differ, at least with regard to Temperature.
+# If we accept the common intercept model, then this means that groupA "produces"
+# 0.2848 - 0.2504 = 0.0344 more temperature degree than groupB.
+# If we accept the parallel lines model, then this means that groupA always "produces"
+# 5.1420 - 2.4768 = 2.6652 more temperature degrees than groupB, regardless of temperature.
+
