@@ -21,7 +21,7 @@
         <entry key="file://$PROJECT_DIR$/presentation.Rmd">
           <value>
             <RMarkdownRenderProfile>
-              <option name="lastOutput" value="$PROJECT_DIR$/presentation.html" />
+              <option name="lastOutput" value="$PROJECT_DIR$/presentation.pdf" />
               <option name="outputDirectoryUrl" value="file://$PROJECT_DIR$" />
             </RMarkdownRenderProfile>
           </value>
