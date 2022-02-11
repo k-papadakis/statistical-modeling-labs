@@ -1,0 +1,15 @@
+Κάποια σχόλια για τις two-way αλληλεπίδρασεις μεταξύ δύο δίτιμων ή ποσοτικών μεταβλητών πχ για το παράδειγμα με τους doctors:
+
+Έχουμε γράψει τις εντολές
+
+smkage<‐smoke*agecat
+
+mod2<‐glm(deaths~smoke+agecat+agesq+smkage+offset(log(ni)), family=poisson)
+
+Αυτή η περίπτωση είναι απλή (επειδή οι μεταβλητές είναι είτε δίτιμες ή ποσοτικές και δεν είναι δηλωμένες ως factors), ωστόσο στην R στην περίπτωση που οι μεταβλητές (είτε η μία είτε και οι δύο) είναι δηλωμένες ως factors, η αλληλεπίδραση Α*Β μπαίνει στο model formula και δεν σημαίνει απλό πολλαπλασιασμό όταν Α ή/και Β είναι δηλωμένη ως factor. Στο warning message, θα γράψει πως Α*Β ως αριθμητική πράξη δεν έχει νόημα για factors, οπότε γενικώς να γράψετε την εντολή ως εξής
+
+mod2<‐glm(deaths~smoke+agecat+agesq+smoke*agecat+offset(log(ni)), family=poisson)
+
+Κατά συνέπεια στην περίπτωση που έχουμε δηλώσει τις μεταβλητές ως factors (για την άσκηση τη δική σας υποχρεωτικά για την μεταβλητή cartype) μπορείτε να γράψτε την εντολή πχ για το interaction cartype με agecat ως
+
+glm(formula = y ~ factor(cartype) + agecat + district + cartype * agecat + offset(log(n)), family = poisson)
