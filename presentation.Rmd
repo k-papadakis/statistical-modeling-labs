@@ -1,7 +1,10 @@
 ---
 title: "Statistical Modelling - Series 3"
-author: Konstantinos Papadakis (DSML 03400149)
-date: 13 January 2022
+author: |
+    | \textbf{Konstantinos Papadakis}
+    | Student of MSc Data Science and Machine Learning (03400149)
+    | k.i.papadakis@gmail.com
+date: 13 February 2022
 output: pdf_document
 ---
 
@@ -27,7 +30,7 @@ mod1 <- glm(
   y ~ agecat + cartype + district, offset = log(n),
   family = poisson, data = insurances
 )
-summary(mod1)  # Includes Wald and AIC
+summary(mod1)
 ```
 
 Observe that the p-value for the deviance is quite small, which means that our model is "far" from the saturated model. We concluded a similar result from the AIC value.
@@ -35,7 +38,6 @@ On the other hand, our model is definitely better than a constant predictor, as 
 
 ```{r}
 Dev <- function (mod) {
-  # Don't use it for Bernoulli logistic
   pvalue <- pchisq(mod$deviance, mod$df.residual, lower.tail = FALSE)
   return(c(deviance = mod$deviance, pvalue = pvalue))
 }
@@ -85,16 +87,21 @@ PlotResiduals <- function(mod, type) {
 
 
 PlotHatvalues <- function(mod) {
-  p = length(mod$coefficients)
-  n = length(mod$fitted.values)
+  p <- length(mod$coefficients)
+  n <- length(mod$y)
+  lty <- 1
   plot(hatvalues(mod), ylab = "Hat values")
-  abline(h = 2*p/n)
+  abline(h = 2*p/n, lty = lty)
+  legend("topright", legend = "2p / n", lty = lty)
 }
 
 
 PlotCooks <- function(mod) {
+  n <- length(mod$y)
+  lty <- 1
   plot(cooks.distance(mod), ylab = "Cook's Distance")
-  abline(h = c(0.5, 1), lty = 2)
+  abline(h = 4/n, lty = lty)
+  legend("topright", legend = "4 / n", lty = 1)
 }
 
 
@@ -126,20 +133,20 @@ The new model's residual deviance dropped from 41.79 to 37.27. This decrease cor
 AIC increased from 222.15 to 223.63 (i.e. it worsened), which is due to `cartype:district` introducing (4-1) * (2-1) = 3 extra covariates.
 
 ```{r}
-mod_alt <- glm(
+mod1_alt <- glm(
   y ~ agecat + cartype + district + cartype:district, offset = log(n),
   family = poisson, data = insurances
 )
 
-summary(mod_alt)
+summary(mod1_alt)
 ```
 
 ```{r}
-anova(mod1, mod_alt, test = "Chisq")
+anova(mod1, mod1_alt, test = "Chisq")
 ```
 
 
-From the plot below we observe there is a trend to have more insurances claims per capita in Athens compared to other cities, except when the car is of type 4, in which case the trend is reversed (Athens has fewer claims per capita compared to other cities). This is in agreement with the small p-value for the covariate `cartype4:district`.
+From the plot below we observe there is a trend to have more insurance claims per capita in Athens compared to other cities, except when the car is of type 4, in which case the trend is reversed (Athens has fewer claims per capita compared to other cities). This is in agreement with the small p-value for the covariate `cartype4:district`.
 
 ```{r}
 ggplot(insurances, aes(district, y/n, color = cartype)) +
@@ -156,10 +163,7 @@ In the same fashion as part I, we fit our model and observe the Wald tests P(>|z
 
 ```{r}
 leuk <- read.table("./data/leukaemia.txt", header = TRUE)
-mod2 <- glm(
-  response ~ .,
-  family = binomial, data = leuk
-)
+mod2 <- glm(response ~ ., family = binomial, data = leuk)
 summary(mod2)
 ```
 
