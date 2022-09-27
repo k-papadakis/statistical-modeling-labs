@@ -1,0 +1,369 @@
+---
+title: "Statistical Modelling - Series 2"
+author: Konstantinos Papadakis (DSML 03400149)
+date: 5 January 2022
+output: pdf_document
+---
+
+# Part A
+We start by loading the appropriate libraries and the dataset.
+
+```{r message = FALSE}
+library("car")
+library("corrplot")
+library("olsrr")
+library("glmnet")
+library("ggplot2")
+
+vehicles_full <- read.table("./data/vehicles.txt", header = TRUE)
+
+# We can convert the "vs" and "am" to factors, but since they only have two levels,
+# with value 0 and 1, we can keep them as is.
+# factor_columns <- c("vs", "am")
+# df_full[factor_columns] <- lapply(df_full[factor_columns], as.factor)
+
+# Exclude the columnn with the vehicle names.
+vehicles <- vehicles_full[-1]
+```
+
+We then fit a linear model using all the variables. No variable is significant even though \( R^2 \) is decent. This leads us to believe that some of them might be redundant due to multicollinearity.
+```{r}
+mod <- lm(mpg ~ ., vehicles)
+summary(mod)
+```
+
+## A.1
+We see that there's large simple collinearity between variables
+```{r}
+corr_matrix <- cor(vehicles)
+corrplot(corr_matrix)
+```
+
+The variance inflation factor for almost all variables is above 5, which means that there's large collinearity among certain subsets of our variables.
+```{r}
+vif_values <- vif(mod)
+barplot(vif_values, main = "VIF Values", horiz = TRUE, col = "steelblue")
+abline(v = 5, lwd = 3, lty = 2)
+```
+
+In the Residuals vs Fitted plot, we see that the line is not far from horizontal, and that the spread around it is roughly homogenous. Thus, homoscedacity seems to hold. The QQ plot doesn't look great, so we might need to transform the predicted variable. In the Residuals vs Leverage plot, we see that the two most influential samples are 29 and 9.
+
+```{r}
+par(mfrow = c(2,2))
+plot(mod)
+```
+
+We notice that according to the \(\frac{2p}{n}\) criterion for leverages, samples 9, 29 and 31 can be considered influential.
+```{r}
+leverages <- hatvalues(mod)
+influential_threshold <- 2 * (ncol(vehicles) - 1) / nrow(vehicles)
+barplot(leverages, main = "Leverages", col = "steelblue")
+abline(h = influential_threshold, lwd = 3, lty = 2)
+```
+
+According to Cook's distance, sample 29 is relatively influential, although its corresponding value is not greater than 1.
+```{r}
+cooks <- cooks.distance(mod)
+cooks_thresshold <- c(0.5, 1)
+barplot(cooks, main = "Cook's Distances", col = "steelblue", ylim = c(0, max(cooks, 1.2)))
+abline(h = cooks_thresshold, lwd = 3, lty = 2)
+```
+
+DFFITS also show us that the most influential points are 9 and 29
+```{r}
+dffits_values <- dffits(mod)
+fthresh <- 2 * sqrt((ncol(vehicles) - 1) / nrow(vehicles))
+ylim <- max(fthresh, abs(dffits_values)) + 0.2
+barplot(dffits_values, main = "DFFITS", col = "steelblue", ylim = c(-ylim, ylim))
+abline(h = c(-fthresh, fthresh), lwd = 3, lty = 2)
+```
+
+DFBETAS norms also show us that samples 9 and 29 are influential.
+```{r}
+dfbetas_values <- dfbetas(mod)
+dfbetas_norms <- apply(dfbetas_values, 1, function(v){sqrt(sum(v^2))})
+bthresh <- 2 * sqrt((ncol(vehicles) - 1) / nrow(vehicles))
+ylim <- max(bthresh, abs(dfbetas_norms))
+barplot(dfbetas_norms, main = "DFBETAS L2 Norm", col = "steelblue",
+         ylim = c(0, max(bthresh, dfbetas_norms)+0.2))
+abline(h = c(0, bthresh), lwd = 3, lty = 2)
+```
+
+We can also view DFBETAS coordinate by coordinate
+```{r}
+dfbetasPlots(mod, layout=c(3, 4))
+```
+
+## A.2
+We can use step search ...
+```{r eval = FALSE}
+attach(vehicles)
+print("-----FORWARD-----")
+mod_forward <- step(
+   lm(mpg ~ 1),
+   scope = mpg ~ cyl + disp + hp + drat + wt + qsec + vs + am + gear + carb,
+   direction = "forward",
+   test = "F",
+   trace = 100,
+)
+print("-----BACKWARD-----")
+mod_backward <- step(
+   lm(mpg ~ ., vehicles),
+   scope = NULL,
+   direction = "backward",
+   test = "F",
+   trace = 100,
+)
+print("-----BOTH-----")
+mod_both<- step(
+   lm(mpg ~ 1),
+   scope = mpg ~ cyl + disp + hp + drat + wt + qsec + vs + am + gear + carb,
+   direction = "both",
+   test = "F",
+   trace = 100,
+)
+detach(vehicles)
+```
+
+... but since our variables are only 10, and our samples only 32, we can simply try out all possible \( 2^{10} - 1 = 1023 \) models and pick the best one according to some measure (e.g. AIC).
+
+```{r results = 'asis'}
+steps_all <- ols_step_all_possible(mod)
+steps_all <- steps_all[order(steps_all$aic), ]
+ knitr::kable(steps_all[1:10, c(-1, -2)],
+              caption = "Top 10 best results according to AIC", d = 3)
+```
+
+We now fit the model using the variable subset with the smallest AIC value.
+```{r}
+step_min_aic <- steps_all[1, ]
+best_vars <- strsplit(step_min_aic$predictors, " ")[[1]]
+best_formula1 <- as.formula(paste("mpg", "~", paste0(best_vars, collapse = "+")))
+best_mod1 <- lm(best_formula1, vehicles)
+```
+
+The F-test and the t-test results show that all variables are significant. \( R^2 \) dropped only by `r summary(mod)$r.square - summary(best_mod1)$r.square`
+
+```{r}
+summary(best_mod1)
+```
+
+The p value of the F test H0: `best_mod1` vs H1: `mod` is 0.8636 which means that for any test with significance level lower than 0.8636 (i.e. any reasonable significance level) we can't reject H0. We thus keep the `best_mod1`.
+```{r}
+anova(best_mod1, mod, test = "F")
+```
+
+## A.3
+
+As we noted before, the qqplot of the regressand doesn't look great. We'll try to take the logarithm of it in case it follows a lognormal distribution.
+```{r}
+par(mfrow = c(2,2))
+plot(best_mod1)
+```
+
+We regress on \( \log(\textrm{mpg}) \).
+```{r}
+best_formula2 <- as.formula(paste("log(mpg)", "~", paste0(best_vars, collapse = "+")))
+best_mod2 <- lm(best_formula2, vehicles)
+```
+
+The qq plot looks better. The residuals plots also look better. The only influential point appears to be 17, whose values look alright, although I am not a car expert.
+```{r}
+par(mfrow = c(2,2))
+plot(best_mod2)
+```
+
+We also observe that \( R^2 \) increased by `r summary(best_mod2)$r.square - summary(best_mod1)$r.square`.
+```{r}
+summary(best_mod2)
+```
+
+We now attempt \( l1 \) and \( l2 \) regularization. We will attempt to use both (i.e. elastic net), with weights \(\alpha = 0.2 \) for \( l1 \) and \( 1 - \alpha = 0.8 \) for \( l2 \). `glmnet` tries multiple values for the regularization parameter \( \lambda \).
+```{r}
+y <- log(vehicles$mpg)
+x <- vehicles[best_vars]
+elastic_mod <- glmnet(x, y, alpha = 0.2, family = "gaussian")
+```
+We notice that the smaller \( \lambda \) gets, the better the \( R^2 \) value (`%Dev`) with the maximum reached at `r max(elastic_mod$dev.ratio)`, which is the same as the original model. This results indicates that our model is simple enough to the point where it doesn't need any regularization.
+```{r}
+plot(elastic_mod$lambda, elastic_mod$dev.ratio, type = "l", lty = 1,
+     main = "Elastic Net", xlab = "lambda", ylab = "R squared")
+```
+
+
+We see that the there's much less multicollinearity now, as expected.
+```{r}
+barplot(vif(best_mod2), main = "VIF Values",
+        horiz = TRUE, col = "steelblue", xlim = c(0, 6))
+abline(v = 5, lwd = 3, lty = 2)
+```
+
+From the DFFITS we confirm that 17 is the only influential point
+```{r}
+dffits_values <- dffits(best_mod2)
+fthresh <- 2 * sqrt((length(best_mod2$coefficients) - 1) / nrow(vehicles))
+ylim <- max(fthresh, abs(dffits_values)) + 0.2
+barplot(dffits_values, main = "DFFITS", col = "steelblue", ylim = c(-ylim, ylim))
+abline(h = c(-fthresh, fthresh), lwd = 3, lty = 2)
+```
+
+Added variable plots: We see that there is a linear relationship between the predicted variable and each predictor variable, separately. This means that all variables belong to the model.
+```{r}
+avPlots(best_mod2)
+```
+
+Partial residual plots: for each variable we have that the residual and the component curves are relatively close to each other, thus all the variables belong to the model.
+
+```{r}
+crPlots(best_mod2)
+```
+
+Confidence intervals for the model's coefficients.
+```{r}
+cbind(
+  fit = best_mod2$coefficients,
+  confint(best_mod2, level = 0.95)
+)
+```
+
+We create a synthetic data point, similar to 19.
+```{r}
+synthetic_x <- list(wt = 1.6, qsec = 18.5, am = 1)
+```
+
+Confidence interval of the expected value of the prediction
+```{r}
+log_conf <- predict(best_mod2, synthetic_x, interval = "confidence", level = 0.95)
+conf <- exp(log_conf)
+conf
+```
+
+Prediction interval of the value of the prediction
+```{r}
+log_pred <- predict(best_mod2, synthetic_x, interval = "prediction", level = 0.95)
+pred <- exp(log_pred)
+pred
+```
+**Interpretation of the coefficients**
+
+* **wt** in `r confint(best_mod2, level = 0.95)['wt', ]` means that the heavier the vehicle, the fewer miles it can travel given one gallon (-wt miles less)
+* **qsec** in `r confint(best_mod2, level = 0.95)['qsec', ]` means that faster vehicles can travel longer distances given one gallon (qsec miles more). This might be due the slow vehicles in the dataset being trucks.
+* **am** in `r confint(best_mod2, level = 0.95)['am', ]` means that manual vehicles tend to be able to travel more miles given one gallon. The confidence intervals are quite large, which might be due to the fact that the skill of manual car drivers varies a lot.
+* Now, considering the interval for **E[mpg]** and **mpg**, we see that our synthetic point is similar to sample 19 which has `r vehicles[19, 'mpg']` mpg. Our prediction for the synthetic point is `r exp(predict(best_mod2, synthetic_x))` which is pretty much what we'd expect, although it is worth noting that the interval lengths are very large.
+
+# Part B
+
+We start by loading the data
+
+```{r}
+canary <- read.table("./data/canary.txt", header = TRUE)
+canary$group <- as.factor(canary$group)
+```
+
+We initialize a model, using `pulses`, `group` and `pulses:group` i.e. the interaction between them.
+```{r}
+mod <- lm(Temp ~ pulses * group, data = canary)
+summary(mod)
+```
+
+Observe that while `pulses` is significant, `group` and `group:pulses` are not when they coexist in the model. This implies that removing at least one of the three might be a good idea.
+
+We can try all subsets of the variables
+```{r}
+mod <- lm(Temp ~ pulses * group, data = canary)
+steps_all <- ols_step_all_possible(mod)
+steps_all <- steps_all[order(steps_all$cp), ]
+knitr::kable(steps_all[c(-1, -2)],
+             caption = "Best results according to Mallows' Cp", d = 3)
+```
+
+It is important to note that when we view our data by group, **`group` is essentially part of the intercept**, since it's constant.
+
+We can have 3 types of pairs of lines:
+
+* **Case I**, Two separate lines: When `pulses:group` is part of the model.
+* **Case II**, Two parallel lines: When `pulses:group` is not part of the model, but `group` is part of the model.
+* **Case III**, One common line: When neither `pulses:group`, nor `group` is part of the model.
+
+The options `pulses:group` and `group + pulses` have essentially the same \( R^2 \). Even though their Mallows' Cp differ, we should view the models as equally complex, since `pulses:group` describes a pair of lines with the intercept fixed, and `group + pulses:group` describes a pair of lines with the slope fixed. Thus, either choice will suffice.
+
+```{r}
+mod_common_intercept <- lm(Temp ~ pulses:group, data = canary)
+mod_common_slope <- lm(Temp ~ group + pulses, data = canary)
+```
+
+Let us see how the models perform visually.
+```{r}
+common_intercept <- mod_common_intercept$coefficients["(Intercept)"]
+slopeA <- mod_common_intercept$coefficients["pulses:groupA"]
+slopeB <- mod_common_intercept$coefficients["pulses:groupB"]
+gg_common_intercept <- ggplot(data = canary, aes(x = pulses, y = Temp)) +
+  geom_point(aes(col = group))
+# Plot the lines
+gg_common_intercept <- gg_common_intercept + geom_abline(aes(intercept = common_intercept,
+                                                             slope = slopeA, color = "A"))
+gg_common_intercept <- gg_common_intercept + geom_abline(aes(intercept = common_intercept,
+                                                             slope = slopeB, color = "B"))
+# Add labels
+strA <- sprintf("A: y = %.4f + %.4f x", common_intercept, slopeA)
+strB <- sprintf("B: y = %.4f + %.4f x", common_intercept, slopeB)
+title <- sprintf("Common intercept model for canary.txt (R-Square = %.5f)",
+                 summary(mod_common_intercept)$r.square)
+gg_common_intercept <- gg_common_intercept + scale_color_discrete(labels=c(strA, strB))
+gg_common_intercept <- gg_common_intercept + labs(title = title)
+gg_common_intercept
+```
+
+```{r}
+interceptA <- mod_common_slope$coefficients["(Intercept)"]
+interceptB <- sum(mod_common_slope$coefficients[c("(Intercept)", "groupB")])
+common_slope <- mod_common_slope$coefficients["pulses"]
+gg_common_slope <- ggplot(data = canary, aes(x = pulses, y = Temp)) +
+  geom_point(aes(col = group))
+# Plot the lines
+gg_common_slope <- gg_common_slope + geom_abline(aes(intercept = interceptA,
+                                                     slope = common_slope, color = "A"))
+gg_common_slope <- gg_common_slope + geom_abline(aes(intercept = interceptB,
+                                                     slope = common_slope, color = "B"))
+# Add labels
+strA <- sprintf("A: y = %.4f + %.4f x", interceptA, common_slope)
+strB <- sprintf("B: y = %.4f + %.4f x", interceptB, common_slope)
+title <- sprintf("Parallel lines model for canary.txt (R-Square = %.5f)",
+                 summary(mod_common_slope)$r.square)
+gg_common_slope <- gg_common_slope + scale_color_discrete(labels=c(strA, strB))
+gg_common_slope <- gg_common_slope + labs(title = title)
+gg_common_slope
+```
+
+Summary of the common intercept model
+```{r}
+summary(mod_common_intercept)
+```
+
+Summary of the parallel model
+```{r}
+summary(mod_common_slope)
+```
+
+Below we test our simplified models against the full model.
+
+Two lines with common intercept
+```{r}
+anova(mod_common_intercept, mod, test = "F")
+
+```
+
+Two parallel lines
+```{r}
+anova(mod_common_slope, mod, test = "F")
+```
+
+Single line (p-value = 7.62e-11 means that we reject this case for all sensible significance levels)
+```{r}
+anova(lm(Temp ~ pulses, data = canary), mod)
+```
+
+
+- If we accept the common intercept model, then this means that groupB "produces" `r slopeB - slopeA` more degrees per pulse than groupA.
+
+- If we accept the parallel lines model, then this means that groupB always "produces" `r interceptB - interceptA` more degrees than groupA, regardless of temperature.
