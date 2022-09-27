@@ -1,0 +1,232 @@
+---
+title: "Statistical Modelling - Series 3"
+author: |
+    | \textbf{Konstantinos Papadakis}
+    | Student of MSc Data Science and Machine Learning (03400149)
+    | k.i.papadakis@gmail.com
+date: 13 February 2022
+output: pdf_document
+---
+
+# I) asfalies.txt
+
+## (i)
+We start by loading the appropriate libraries and the dataset.
+
+```{r message = FALSE}
+library(ggplot2)
+library(car)
+library(hnp)
+library(pROC)
+
+insurances <- read.table("./data/asfalies.txt", header = TRUE)
+insurances$cartype <- as.factor(insurances$cartype)
+```
+
+We then fit our model. In its summary we can see the Wald tests P(>|z|) of the coefficients and the AIC value. Observe that according to the Wald tests, all variables have extremely low p-value which allows us to conclude that they are significant without doubt. The AIC value is quite high, which implies that our model is far from perfect.
+
+```{r}
+mod1 <- glm(
+  y ~ agecat + cartype + district, offset = log(n),
+  family = poisson, data = insurances
+)
+summary(mod1)
+```
+
+Observe that the p-value for the deviance is quite small, which means that our model is "far" from the saturated model. We concluded a similar result from the AIC value.
+On the other hand, our model is definitely better than a constant predictor, as the p-value for the delta-deviance is essentially 0.
+
+```{r}
+Dev <- function (mod) {
+  pvalue <- pchisq(mod$deviance, mod$df.residual, lower.tail = FALSE)
+  return(c(deviance = mod$deviance, pvalue = pvalue))
+}
+
+DeltaDev <- function (mod) {
+  ddeviance <- mod$null.deviance - mod$deviance
+  ddf <- mod$df.null - mod$df.residual
+  pvalue <- pchisq(ddeviance, ddf, lower.tail = FALSE)
+  return(c(ddeviance = ddeviance, pvalue = pvalue))
+}
+```
+
+```{r}
+print(Dev(mod1))
+print(DeltaDev(mod1))
+```
+
+## (ii)
+We can create approximate 95% confidence intervals for the coefficients using the Wald statistics.
+
+```{r}
+confint(mod1, level = 0.95)
+```
+
+These values can be interpreted as follows. Whenever the $i$-th covariate is increased by 1, the expected number of insurance claims is multiplied by $e^{\beta_i}$.  Intervals for those multipliers are seen below.
+
+```{r}
+exp(confint(mod1, level = 0.95))
+```
+
+Thus, if for example `agecat` changes from 0 to 1 (i.e. young to old), then we expect the insurance claims to drop by anywhere between 25% and 37%.
+
+## (iii)
+In the following, nothing is out of the ordinary. The Pearson and Deviance residuals are distributed "nicely" around 0, the Hat values and Cook's distances show that 4 data points are relatively influential. Finally, the likehood residuals are "nicely" distributed around 0 as well.
+
+```{r}
+PlotResiduals <- function(mod, type) {
+  oldparams <- par(mfrow = c(1, 2))
+  r <- residuals(mod, type = type)
+  plot(mod$fitted.values, r,
+     xlab = "Fitted Values", ylab = sprintf("%s residuals", type))
+  abline(h = 0)
+  qqnorm(r, main = sprintf("QQPlot - %s residuals", type))
+  qqline(r)
+  par(oldparams)
+}
+
+
+PlotHatvalues <- function(mod) {
+  p <- length(mod$coefficients)
+  n <- length(mod$y)
+  lty <- 1
+  plot(hatvalues(mod), ylab = "Hat values")
+  abline(h = 2*p/n, lty = lty)
+  legend("topright", legend = "2p / n", lty = lty)
+}
+
+
+PlotCooks <- function(mod) {
+  n <- length(mod$y)
+  lty <- 1
+  plot(cooks.distance(mod), ylab = "Cook's Distance")
+  abline(h = 4/n, lty = lty)
+  legend("topright", legend = "4 / n", lty = 1)
+}
+
+
+PlotLikelihoodResiduals <- function(mod) {
+  oldparams <- par(mfrow = c(1, 2))
+  plot(rstudent(mod), ylab = "Likelihood Residuals")
+  abline(h = 0)
+  plot(hatvalues(mod), rstudent(mod),
+       xlab = "Hat values", ylab = "Likelihood Residuals")
+  abline(h = 0)
+  par(oldparams)
+}
+```
+
+```{r}
+PlotResiduals(mod1, "pearson")
+PlotResiduals(mod1, "deviance")
+PlotHatvalues(mod1)
+PlotCooks(mod1)
+PlotLikelihoodResiduals(mod1)
+```
+
+## (iv)
+
+After trying all recommended combinations, `cartype:district` was the only one which created a variable with p-value < 0.05, so we select this one.
+
+The new model's residual deviance dropped from 41.79 to 37.27. This decrease corresponds to a p-value equal to 0.21, which is not low enough to reject the original (simpler) model.
+
+AIC increased from 222.15 to 223.63 (i.e. it worsened), which is due to `cartype:district` introducing (4-1) * (2-1) = 3 extra covariates.
+
+```{r}
+mod1_alt <- glm(
+  y ~ agecat + cartype + district + cartype:district, offset = log(n),
+  family = poisson, data = insurances
+)
+
+summary(mod1_alt)
+```
+
+```{r}
+anova(mod1, mod1_alt, test = "Chisq")
+```
+
+
+From the plot below we observe there is a trend to have more insurance claims per capita in Athens compared to other cities, except when the car is of type 4, in which case the trend is reversed (Athens has fewer claims per capita compared to other cities). This is in agreement with the small p-value for the covariate `cartype4:district`.
+
+```{r}
+ggplot(insurances, aes(district, y/n, color = cartype)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm", se = FALSE)
+```
+
+---
+
+# II) leukaemia.txt
+
+## (i)
+In the same fashion as part I, we fit our model and observe the Wald tests P(>|z|) of the coefficients and the AIC value in the model's summary. According to the Wald statistics, only `age`, `index` and `temperature` appear to be relevant. The AIC value is quite low, which implies that our model is performing relatively well (especially if we take into account that we have "redundant" variables).
+
+```{r}
+leuk <- read.table("./data/leukaemia.txt", header = TRUE)
+mod2 <- glm(response ~ ., family = binomial, data = leuk)
+summary(mod2)
+```
+
+Observe that the p-value for the deviance is high, which means that our model performs well even when compared to the saturated model (possibly equally well). We concluded a similar result from the AIC value.
+The p-value for the delta-deviance is very small, which means that we definitely prefer our model over the constant predictor.
+
+```{r}
+print(Dev(mod2))
+print(DeltaDev(mod2))
+```
+
+## (ii)
+
+In the Partial Residual Plots, we see that the fitted curves are close to the expected lines, which is an indication that our covariates don't require any further transformation.
+```{r}
+crPlots(mod2)
+```
+
+The residuals are well within the simulated envelope, so everything looks good here as well.
+```{r}
+hnp(mod2)
+```
+
+Only a few data stand out when it comes to importance.
+```{r}
+PlotHatvalues(mod2)
+```
+
+```{r}
+PlotCooks(mod2)
+```
+
+It seems that the leverage and the likelihood-residual variance are positively related.
+```{r}
+PlotLikelihoodResiduals(mod2)
+```
+
+## (iii)
+
+In the same way as part I, we can create 95% confidence intervals for the coefficients using the Wald statistics.
+
+```{r}
+confint(mod2, level = 0.95)
+```
+
+These values can be interpreted as follows. Whenever the $i$-th covariate is increased by 1, the odds of a positive response are multiplied by $e^{\beta_i}$. Intervals for those multipliers are seen below.
+
+```{r}
+exp(confint(mod2, level = 0.95))
+```
+
+Thus, if for example `index` (leukaemia cells) is increased by 1, the odds of a positive response $\frac{P(\textrm{positive})}{P(\textrm{negative})}$ will likely increase by a factor between 1.19 and 2.03.
+
+## (iv)
+
+We see that the ROC curve is heavily "pointing" towards (specificity, sensitivity) = (1, 1), and the Area Under the Curve (AUC) is remarkably high (0.8962), which is something that we expected from the values of the AIC and the Deviance.
+
+```{r}
+PlotRoc <- function(mod) {
+  oldparams <- par(pty = "s")
+  roc(mod$y, mod$fitted.values, smooth=TRUE, plot=TRUE)
+  par(oldparams)
+}
+
+PlotRoc(mod2)
+```
